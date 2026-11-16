@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Semáforo de Aula</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Panel del Semáforo de Aula</h1>
+  <p id="estado">Cargando...</p>
+  <canvas id="grafico" height="120"></canvas>
+  <table>
+    <thead><tr><th>ID</th><th>Dispositivo</th><th>Sensor</th><th>Valor</th><th>Fecha</th></tr></thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+  <script>
+    const ctx = document.getElementById("grafico");
+    const grafico = new Chart(ctx, {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "Valor", data: [], tension: 0.3 }] },
+    });
+
+    async function actualizar() {
+      try {
+        const res = await fetch("/api/lecturas?limite=30");
+        const datos = await res.json();
+        const orden = [...datos].reverse();
+        grafico.data.labels = orden.map(d => new Date(d.creado_en).toLocaleTimeString());
+        grafico.data.datasets[0].data = orden.map(d => d.valor);
+        grafico.update();
+        document.getElementById("tabla").innerHTML = datos.map(d =>
+          `<tr><td>${d.id}</td><td>${d.dispositivo}</td><td>${d.sensor}</td>` +
+          `<td>${d.valor}</td><td>${new Date(d.creado_en).toLocaleString()}</td></tr>`
+        ).join("");
+        document.getElementById("estado").textContent =
+          `Ultima actualizacion: ${new Date().toLocaleTimeString()} (${datos.length} lecturas)`;
+      } catch (e) {
+        document.getElementById("estado").textContent = "Error al cargar datos";
+      }
+    }
+    actualizar();
+    setInterval(actualizar, 5000); // refresca cada 5 segundos
+  </script>
+</body>
+</html>
